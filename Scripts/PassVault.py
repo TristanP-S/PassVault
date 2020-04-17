@@ -1,3 +1,4 @@
+#Please note: added defs have been taken + modified from sqlitetutorial.net
 import sqlite3 #database/storage
 from hashlib import sha256 #hahses (encryption)
 #MARK: Global Variables / Launch Statements
@@ -14,7 +15,7 @@ if masterPass == passPrompt: #connects to database on device
     passBase = sqlite3.connect('pass_manager.db')
 #MARK: functions (python stores these for use in code below it)
 #makes a password and encodes it
-def create_password(pass_key, service, admin_pass):
+def create_password(pass_key, admin_pass, service):
     return sha256(admin_pass.encode('utf-8') + service.lower().encode('utf-8') + pass_key.encode('utf-8')).hexdigest()[
            :15]
 
@@ -26,25 +27,34 @@ def get_hex_key(admin_pass, service):
 def get_password(admin_pass, service):
     secret_key = get_hex_key(admin_pass, service)
     cursor = passBase.execute("SELECT * from KEYS WHERE PASS_KEY=" + '"' + secret_key + '"')
-
     file_string = ""
     for row in cursor:
         file_string = row[0]
     return create_password(file_string, service, admin_pass)
 
 #creates a password
-def add_password(service, admin_pass):
+def add_password(admin_pass, service):
     secret_key = get_hex_key(admin_pass, service)
     command = 'INSERT INTO KEYS (PASS_KEY) VALUES (%s);' % ('"' + secret_key + '"')
     passBase.execute(command)
     passBase.commit()
     return create_password(secret_key, service, admin_pass)
-#deltes a password
 
+#deletes a password
+def del_password(admin_pass, service):
+    secret_key = get_hex_key(admin_pass, service)
+    command = 'DELETE FROM keys WHERE id='
+    return str(secret_key)
+
+#deletes ALL passwords (by deleting the 'keys' table)
+def del_passwords():
+    command = "Delete FROM keys"
+    passBase.cursor().execute(command)
+    return
 #MARK: Main Code
 if masterPass == passPrompt: #if password was entered properly (and db has loaded)
     try: #attempts to make a new 'table' called 'keys' for storage if one doesn't exist on device
-        passBase.execute('''CREATE TABLE KEYS
+        passBase.execute('''CREATE TABLE Keys
             (PASS_KEY TEXT PRIMARY KEY NOT NULL);''')
         print("Your PassSafe has been created!\nWhat do you want to do with it?")
     except: #if the attempt fails (table has already been made)
@@ -58,16 +68,17 @@ if masterPass == passPrompt: #if password was entered properly (and db has loade
         print("1: Generate and Store a New Password")
         print("2: View Stored Password with a Certain Name")
         print("3: Delete Stored Password with a Certain Name")
-        print("4: Quit This Program")
+        print("4: Delete ALL Stored Passwords")
+        print("5: Quit This Program")
         print("*" * 15)
         input_ = raw_input("Input Command :-")
 
-        if input_ == "4":
+        if input_ == "5":
             break
         elif input_ == "1":
             service = raw_input("What should this password be stored under?\n")
             try:
-                print("\n" + service.capitalize() + " password created:\n" + add_password(service, masterPass))
+                print("\n" + service.capitalize() + " password created:\n" + add_password(masterPass, service))
             except:
                 print("There is already a password stored under this name, please delete it first.")
         elif input_ == "2":
@@ -76,7 +87,16 @@ if masterPass == passPrompt: #if password was entered properly (and db has loade
         elif input_ == "3":
             try:
                 service = raw_input("What password do you want to delete?\n")
+                del_password(masterPass, service)
+                print("Password Deleted")
             except:
                 print("There is no password stored under this name.")
+        elif input_ == "4":
+            input_2 = raw_input("Are you sure you want to delete ALL your passwords? (Put Y for yes, N for no)")
+            if input_2 == "Y":
+                del_passwords()
+                print("ALL stored passwords have been deleted")
+            else:
+                print("Stored passwords not deleted")
         else:
             print("\'" + input_ + "\'" + " is not a command")
