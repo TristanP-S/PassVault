@@ -26,7 +26,7 @@ def get_hex_key(admin_pass, service):
 #gets password stored at location mentioned
 def get_password(admin_pass, service):
     secret_key = get_hex_key(admin_pass, service)
-    cursor = passBase.execute("SELECT * from KEYS WHERE PASS_KEY=" + '"' + secret_key + '"')
+    cursor = passBase.execute("SELECT * from keys WHERE PASS_KEY=" + '"' + secret_key + '"')
     file_string = ""
     for row in cursor:
         file_string = row[0]
@@ -35,26 +35,27 @@ def get_password(admin_pass, service):
 #creates a password
 def add_password(admin_pass, service):
     secret_key = get_hex_key(admin_pass, service)
-    command = 'INSERT INTO KEYS (PASS_KEY) VALUES (%s);' % ('"' + secret_key + '"')
+    command = 'INSERT INTO keys (PASS_KEY) VALUES (%s);' % ('"' + secret_key + '"')
     passBase.execute(command)
     passBase.commit()
     return create_password(secret_key, service, admin_pass)
 
-#deletes a password
+#deletes a specified password
 def del_password(admin_pass, service):
     secret_key = get_hex_key(admin_pass, service)
-    command = 'DELETE FROM keys WHERE id='
+    command = ("DELETE FROM keys WHERE PASS_KEY=" + '"' + secret_key + '"')
+    passBase.cursor().execute(command)
     return str(secret_key)
 
-#deletes ALL passwords (by deleting the 'keys' table)
+#deletes ALL passwords (by deleting the 'keys' table) except the primary key (not null)
 def del_passwords():
-    command = "Delete FROM keys"
+    command = ("Delete FROM keys")
     passBase.cursor().execute(command)
     return
 #MARK: Main Code
 if masterPass == passPrompt: #if password was entered properly (and db has loaded)
     try: #attempts to make a new 'table' called 'keys' for storage if one doesn't exist on device
-        passBase.execute('''CREATE TABLE Keys
+        passBase.execute('''CREATE TABLE keys
             (PASS_KEY TEXT PRIMARY KEY NOT NULL);''')
         print("Your PassSafe has been created!\nWhat do you want to do with it?")
     except: #if the attempt fails (table has already been made)
